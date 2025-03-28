@@ -1,0 +1,1 @@
+# For going from the database row to constructing the (predictable) table of recipe docs

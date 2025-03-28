@@ -1,0 +1,2 @@
+# See how free-text search differs from the regular MongoDB search: https://www.mongodb.com/resources/basics/databases/database-search
+# We can show whether having the free-text capability significantly slows it or nah

@@ -1,0 +1,3 @@
+# 1) Show how our system scales as more recipes are incrementally included, with a line graph of number of recipes vs average query time– or a line graph of the number of queries the system can process per unit of time as the number of recipes grows AKA throughput
+
+# 2) Produce a line graph showing number of users vs average query time or a similar throughput line graph of number of queries it can processes per unit of time as the number of users grows (after simulating multiple user requests at once through an existing tool for load-testing like Locust)

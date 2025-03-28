@@ -1,0 +1,1 @@
+# For going from the database row to constructing the (possibly nonconventional) table of ingredient docs

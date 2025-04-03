@@ -1,14 +1,12 @@
 # For going from the database row to constructing the (predictable) table of recipe docs
-import json
 from pyspark.sql import SparkSession, functions as F
-from pyspark.sql.functions import col
-import re
-# from database import get_database
-import time
-from fractions import Fraction
-from pyspark.sql.functions import udf, col, explode
+from pyspark.sql.functions import udf, col
 from pyspark.sql.types import ArrayType, DoubleType, StringType
-
+from fractions import Fraction
+import json
+import os
+import re
+import time
 # #TODO: Func to process a single row into the desired structure
 #RecipeId,Name,AuthorId,AuthorName,CookTime,PrepTime,TotalTime,DatePublished,Description,Images,
 # 
@@ -79,8 +77,16 @@ def convert_fraction(quantity_str, convert_to_float=True):
 
 def main():
     # Initialize Spark session
+    user = os.environ.get("MONGO_RECIPE_USER", default=None)
+    password = os.environ.get("MONGO_RECIPE_PW", default=None)
+        
+        # Create connection string based on creds
+    uri = f'mongodb+srv://{user}:{password}@reverse-index.xkyk7ik.mongodb.net/?retryWrites=true&w=majority&appName=Reverse-Index'
     spark = (SparkSession.builder 
         .appName('CSV to MongoDB Atlas') 
+        .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:10.4.1") 
+        .config("spark.mongodb.read.connection.uri", uri) 
+        .config("spark.mongodb.write.connection.uri", uri) 
         .getOrCreate())
     # spark.conf.set("spark.sql.debug.maxToStringFields", 10000)
 
@@ -116,7 +122,7 @@ def main():
     print(f"Number of rows in the DataFrame where quantity/parts match length, after numeric conversion stuff: {df_length}")
 
     # Convert JSON to read and write, except this is single-line 
-    df_to_numeric_quantities.toJSON().coalesce(1).saveAsTextFile("data/processed/test.json")
+    # df_to_numeric_quantities.toJSON().coalesce(1).saveAsTextFile("data/processed/test.json")
     json_list = df_to_numeric_quantities.limit(10).toJSON().collect()
 
     print("our df length is ")
@@ -132,6 +138,14 @@ def main():
     end_preprocessing_time = time.time()
     elapsed_time = end_preprocessing_time - start_preprocessing_time
     print(f"Time taken for preprocessing: {elapsed_time} seconds")
+    
+    #https://www.mongodb.com/docs/spark-connector/current/batch-mode/batch-write/#std-label-batch-write-to-mongodb
+    (df_to_numeric_quantities.write.format("mongodb")
+     .mode("append")
+     .option("database", "test_db")
+     .option("collection", "test_recipes")
+     .save())
+
     spark.stop()
   
 if __name__ == "__main__":

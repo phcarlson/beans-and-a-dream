@@ -1,9 +1,9 @@
 # For going from the database row to constructing the (predictable) table of recipe docs
 import json
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import split, explode, transform, lit, expr, when, concat
-
-from database import get_database
+from pyspark.sql import SparkSession, functions as F
+from pyspark.sql.functions import col
+import re
+# from database import get_database
 import time
 from fractions import Fraction
 from pyspark.sql.functions import udf, col, explode
@@ -27,77 +27,106 @@ def row_to_document(row):
     document = ''
     return document
 
-def convert_fraction_udf_wrapper(convert_to_float=True):
-   return udf(lambda x: convert_fractions(x, convert_to_float), StringType())
+def convert_fractions_udf_wrapper(convert_to_float=True):
+   return udf(lambda x: convert_fractions(x, convert_to_float), ArrayType(DoubleType()))
 
 def convert_fractions(quantity_strs, convert_to_float=True):
     return [convert_fraction(quantity_str, convert_to_float) for quantity_str in quantity_strs]
 
 def convert_fraction(quantity_str, convert_to_float=True):
     try:
-        # First get the frac slashes a consistent char
-        quantity_str_consistent_slash = quantity_str.replace('⁄', '/')
+        if quantity_str != None:
+            # First get the frac slashes a consistent char
+            quantity_str_consistent_slash = quantity_str.replace('⁄', '/').strip()
+        
+            if convert_to_float:
 
-        if convert_to_float:
-            # Next, if it a mixed number split it up
-            if ' ' in quantity_str_consistent_slash:
-                whole_part, fraction_part = quantity_str_consistent_slash.split(' ')
+                 # If there was a range, take the lower bound if exists because we are ummmm desperate for ingredients?
+                if ' - ' in quantity_str:
+                    quantity_str_consistent_slash = [p.strip() for p in quantity_str_consistent_slash.split(' - ')] 
+                    quantity_str_consistent_slash = [p for p in quantity_str_consistent_slash if p]  # Remove empty values
+                    if len(quantity_str_consistent_slash) == 0:
+                        return None  # If all parts are empty, return None
+                    else:
+                        quantity_str_consistent_slash = quantity_str_consistent_slash[0]
+                parts = re.split(r'\s+', quantity_str_consistent_slash)
 
-                # Convert it to actual numerical value to put back
-                fraction = Fraction(fraction_part)
-                whole_number = float(whole_part)
-                numeric_value = whole_number + float(fraction)
+                # Next, if it a mixed number split it up
+                if len(parts) == 2:
+                    whole_part, fraction_part = parts
 
-                return numeric_value
-            # Not mixed
+                    # Convert it to actual numerical value to put back
+                    fraction = Fraction(fraction_part)
+                    whole_number = abs(float(whole_part))
+                    numeric_value = whole_number + abs(float(fraction))
+
+                    return numeric_value
+                # Not mixed
+                else:
+                    fraction = Fraction(quantity_str_consistent_slash)
+                    numeric_value = abs(float(fraction))
+
+                    # print("it worked:{}".format(numeric_value))
+                    return numeric_value
             else:
-                fraction = Fraction(quantity_str_consistent_slash)
-                numeric_value = float(fraction)
-
-                # print("it worked:{}".format(numeric_value))
-                return numeric_value
+                return quantity_str_consistent_slash
         else:
-            return quantity_str_consistent_slash
+            return None
     # SOL...
     except Exception as e:
         print(e)
         return None  
-    
+
 def main():
     # Initialize Spark session
     spark = (SparkSession.builder 
         .appName('CSV to MongoDB Atlas') 
         .getOrCreate())
-    
+    # spark.conf.set("spark.sql.debug.maxToStringFields", 10000)
+
     start_preprocessing_time = time.time()
 
-    # https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.udf.html
-    # convert_fractions_udf = convert_fraction_udf_wrapper(convert_to_float=True)
-    # Read in small sample
+    # Read in the big big recipes dataset
     df = spark.read.parquet('data/raw/recipes.parquet')
-    print("BEFORE FRAC CONVERSION:")
-    print(df.first())
-    # df_to_numeric_quantities = df.withColumn(
-    #     "RecipeIngredientQuantities", convert_fractions_udf("RecipeIngredientQuantities")
-    #     )
 
-#     # # print("JSON array:",json.dumps(json_array, indent=4))
+    df_length = df.count()
+    print(f"Number of rows in the DataFrame at beginning: {df_length}")
 
+    df_where_quantity_length_matches_part_length = df.filter( F.size(col('RecipeIngredientQuantities')) ==  F.size(col('RecipeIngredientParts')))
+    df_length = df_where_quantity_length_matches_part_length.count()
+    print(f"Number of rows in the DataFrame where quantity/parts match length: {df_length}")
+
+    # print("BEFORE FRAC CONVERSION:")
+    # print(df.show(n=3, truncate=False))
+
+
+    # #TODO Show how the order matters in terms of speed for filtering first, then to numeric vs the other way around :)
 
     # Register the UDF
-    append_ing_udf = udf(convert_fractions, ArrayType(StringType()))
+    # https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.udf.html
+    convert_fractions_udf = convert_fractions_udf_wrapper(convert_to_float=True)
+    df_to_numeric_quantities = df_where_quantity_length_matches_part_length.withColumn("RecipeIngredientQuantities", convert_fractions_udf(col("RecipeIngredientQuantities")))
 
-    # Apply the UDF to transform the 'string_lists' column
-    df_to_numeric_quantities = df.withColumn("RecipeIngredientQuantities", append_ing_udf(col("RecipeIngredientQuantities")))
-
-    df_to_numeric_quantities.show(truncate=True) 
+    # df_filtered = df_to_numeric_quantities.filter(
+    #     F.forall(col("RecipeIngredientQuantities"), lambda x: x > 0.0)
+    # )
 
     print("AFTER FRAC CONVERSION:")
+    df_length = df_to_numeric_quantities.count()
+    print(f"Number of rows in the DataFrame where quantity/parts match length, after numeric conversion stuff: {df_length}")
 
-    json_dict = df_to_numeric_quantities.limit(1).toJSON().collect()[0]
-    parsed_json = json.loads(json_dict) 
+    # Convert JSON to read and write, except this is single-line 
+    df_to_numeric_quantities.toJSON().coalesce(1).saveAsTextFile("data/processed/test.json")
+    json_list = df_to_numeric_quantities.limit(10).toJSON().collect()
 
-    print(json.dumps(parsed_json, indent=4)) 
+    print("our df length is ")
+    # Turn them into prettier JSON by loading them back to a Python dict and reconstructing them as nicely indented and stuff
+    for i, json_str in enumerate(json_list):
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        parsed_json = json.loads(json_str)
+        print(f"Converted row {i + 1}:")
+        print(json.dumps(parsed_json, indent=4))
+
 
     # End preprocessing time
     end_preprocessing_time = time.time()

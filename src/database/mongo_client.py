@@ -1,19 +1,32 @@
 from pymongo import MongoClient
 import os 
+from pymongo.server_api import ServerApi
 
-#TODO: Follow this tutorial for Python to create a simple DB, put the connection string in a safe place
-# https://www.mongodb.com/resources/languages/python
-
-def get_database(database_name):
- 
-    CONNECTION_STRING = os.environ.get("MONGO_CONNECTION_STRING", default=None)
-
-    # Create a connection using MongoClient
-    client = MongoClient(CONNECTION_STRING)
-
-    # Creates the database if not already exists
-    return client[database_name]
-  
-if __name__ == "__main__":   
-  
-   dbname = get_database()
+class DBClient:
+    def __init__(self):
+        # Get creds stored in safe place
+        self.user = os.environ.get("MONGO_RECIPE_USER", default=None)
+        self.password = os.environ.get("MONGO_RECIPE_PW", default=None)
+        
+        # Create connection string based on creds
+        self.uri = f'mongodb+srv://{self.user}:{self.password}@reverse-index.xkyk7ik.mongodb.net/?retryWrites=true&w=majority&appName=Reverse-Index'
+        
+       # Per this doc https://www.mongodb.com/docs/manual/administration/connection-pool-overview/, 
+       # we will only create one client instance throughout the application PER CLUSTER
+       # TODO experiment with mult clusters ???
+        self.client = MongoClient(self.uri, server_api=ServerApi('1'))
+        
+        # Test connection
+        self._test_connection()
+    
+    def _test_connection(self):
+        try:
+            self.client.admin.command('ping')
+            print("Pinged your deployment. You successfully connected to MongoDB!")
+        except Exception as e:
+            print("MongoDB connection failed!")
+            print(e)
+    
+    def get_database(self, database_name):
+        """Returns a database instance, creating it if it does not exist only once data starts to be added."""
+        return self.client[database_name]

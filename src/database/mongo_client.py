@@ -1,6 +1,6 @@
 from pymongo import MongoClient
-import os 
 from pymongo.server_api import ServerApi
+import os 
 
 class DBClient:
     def __init__(self):

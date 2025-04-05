@@ -84,6 +84,29 @@ def copy_up_to_line(source_file, destination_file, line_number):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+
+# Checks length of ingredient and quantity lists. If one is longer, pad the shorter with dummy data.
+def pad_Ingred(Ingred, Quant):
+    list1_copy = Ingred.copy()
+    list2_copy = Quant.copy()
+    diff = abs(len(list1_copy) - len(list2_copy))
+    #if ingredient list is shorter, add "N/A" to end until lists are same length
+    if len(list1_copy) < len(list2_copy):
+        list1_copy.extend(["N/A"] * diff)
+    return list1_copy
+    
+    
+def pad_Quant(Ingred, Quant):
+    list1_copy = Ingred.copy()
+    list2_copy = Quant.copy()
+    diff = abs(len(list1_copy) - len(list2_copy))
+    #if quantity list is shorter, add 0 to end until lists are same length
+    if len(list1_copy) > len(list2_copy):
+        list2_copy.extend([0] * diff)
+    
+    return list2_copy
+
+        
 # # Example usage:
 # source_file_path = 'C:/Users/phcar/Downloads/recipes.csv/recipes.csv'
 # destination_file_path = 'data/raw/first_24500_recipes.csv'

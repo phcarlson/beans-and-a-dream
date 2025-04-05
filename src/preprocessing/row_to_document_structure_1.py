@@ -43,7 +43,7 @@ def main():
     df_padded = df.withColumns({'RecipeIngredientParts': pad_Ingred_Quant_udf(df.RecipeIngredientParts, df.RecipeIngredientQuantities)[0], 
                                 'RecipeIngredientQuantities': pad_Ingred_Quant_udf(df.RecipeIngredientParts, df.RecipeIngredientQuantities)[1]})
     
-    # df_length = df_where_quantity_length_matches_part_length.count()
+    # df_length = df_padded.count()
     # print(f"Number of rows in the DataFrame where quantity/parts match length: {df_length}")
 
     # TODO Show how the order matters in terms of speed for filtering first, then to numeric vs the other way around by running this script in one order 10x or whatever, then the script in another order 10x, and compare

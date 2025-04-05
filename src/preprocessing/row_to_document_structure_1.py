@@ -37,9 +37,12 @@ def main():
     # print(f"Number of rows in the DataFrame at beginning: {df_length}")
 
     # Because I will make an ingredients array where the elements are ingredient/quantity pairs, need to be same length
-    # I noticed that whoever scraped the data was pretty wreckless about scraping recipe lists where not all ingredients had a measurement.
-    # This led to mismatched list lengths... 
-    df_where_quantity_length_matches_part_length = df.filter( F.size(col('RecipeIngredientQuantities')) ==  F.size(col('RecipeIngredientParts'))).drop("RecipeId")
+
+    pad_Ingred_Quant_udf = F.udf(pad_Ingred_Quant, ArrayType(ArrayType(StringType())))
+    #replace columns with updated padded columns
+    df_padded = df.withColumns({'RecipeIngredientParts': pad_Ingred_Quant_udf(df.RecipeIngredientParts, df.RecipeIngredientQuantities)[0], 
+                                'RecipeIngredientQuantities': pad_Ingred_Quant_udf(df.RecipeIngredientParts, df.RecipeIngredientQuantities)[1]})
+    
     # df_length = df_where_quantity_length_matches_part_length.count()
     # print(f"Number of rows in the DataFrame where quantity/parts match length: {df_length}")
 
@@ -47,7 +50,8 @@ def main():
     # Register the UDF
     # https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.udf.html
     convert_fractions_udf = convert_fractions_udf_wrapper(convert_to_float=True)
-    df_to_numeric_quantities = df_where_quantity_length_matches_part_length.withColumn("RecipeIngredientQuantities", convert_fractions_udf(col("RecipeIngredientQuantities")))
+    df_to_numeric_quantities = df_padded.withColumn("RecipeIngredientQuantities", convert_fractions_udf(col("RecipeIngredientQuantities")))
+    
     # df_to_numeric_quantities.printSchema()
 
     # Goodness gracious this took a long time to figure out-- okay, now we want to pair ingredient names and quantities together because

@@ -1,0 +1,19 @@
+{
+    "mappings": {
+      "dynamic": false,
+      "fields": {
+        "Ingredients": {
+          "type": "document",
+          "dynamic": false,
+          "fields": {
+            "IngredientName":{
+              "type": "string"
+            },
+            "Quantity":{
+              "type": "number"
+            }
+          }
+          }
+      }
+    }
+  }

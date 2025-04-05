@@ -1,0 +1,4 @@
+dnspython==2.7.0
+py4j==0.10.9.7
+pymongo==4.11.3
+pyspark==3.5.5

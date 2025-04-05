@@ -3,4 +3,4 @@ This package is to provide an interface for the actual construction/maintenance 
 in addition to anything required for actually connecting to the cloud DB to use it at all.
 """
 
-from .mongo_client import get_database
+from .mongo_client import DBClient

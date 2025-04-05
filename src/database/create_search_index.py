@@ -1,19 +1,9 @@
-# Use the Python Driver (PyMongo?) to create an Atlas Search index, 
-# define the search index from your application and call the create_search_index() method.
-
-# See: https://www.mongodb.com/docs/atlas/atlas-search/create-index/ after selecting Python as the language
-# Also see how it differs from the regular MongoDB querying: https://www.mongodb.com/resources/basics/databases/database-search
-
-# We can index on specific fields, which for us would be the ingredient field
-# https://www.mongodb.com/docs/atlas/atlas-search/define-field-mappings/
-
-# We might also want to see how to optimize searching exact ranges like < 2 tomatoes??? (https://www.mongodb.com/docs/atlas/atlas-search/field-types/number-type/) 
-
 from pymongo.operations import SearchIndexModel
 from mongo_client import DBClient
 import json
-    
-def create_index(database_name, collection_name, index_name, 
+
+# https://www.mongodb.com/docs/languages/python/pymongo-driver/current/indexes/
+def create_search_index(database_name, collection_name, index_name, 
                  search_index_model_instance = None, 
                  search_index_model_file_name = None):
     
@@ -51,7 +41,8 @@ def create_index(database_name, collection_name, index_name,
         client.close()
 
 def main():
-    create_index(database_name, collection_name, index_name, 
+    #TODO: Read about search partitions, see if it applies, and run experiments with it https://www.mongodb.com/docs/atlas/atlas-search/create-index/
+    create_search_index(database_name, collection_name, index_name, 
                  search_index_model_instance, search_index_model_file_name)
 
 if __name__ == "__main__":

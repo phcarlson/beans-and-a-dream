@@ -6,9 +6,11 @@ from fractions import Fraction
 import re
 
 def convert_fractions_udf_wrapper(convert_to_float=True):
-   return udf(lambda x: convert_fractions(x, convert_to_float), ArrayType(DoubleType()))
+    """Provides UDF for your custom func to work with PySpark, based on your optional parameter setting"""
+    return udf(lambda x: convert_fractions(x, convert_to_float), ArrayType(DoubleType()))
 
 def convert_fractions(quantity_strs, convert_to_float):
+    # TODO determine if this list comprehension is like the one guy digging the hole while everyone else watches, and if so, change it accordingly.
     return [convert_fraction(quantity_str, convert_to_float) for quantity_str in quantity_strs]
 
 def convert_fraction(quantity_str, convert_to_float):

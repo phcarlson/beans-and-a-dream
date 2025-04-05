@@ -43,7 +43,7 @@ def main():
     # df_length = df_where_quantity_length_matches_part_length.count()
     # print(f"Number of rows in the DataFrame where quantity/parts match length: {df_length}")
 
-    # TODO: Show how the order matters in terms of speed for filtering first, then to numeric vs the other way around :)
+    # TODO Show how the order matters in terms of speed for filtering first, then to numeric vs the other way around by running this script in one order 10x or whatever, then the script in another order 10x, and compare
     # Register the UDF
     # https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.udf.html
     convert_fractions_udf = convert_fractions_udf_wrapper(convert_to_float=True)

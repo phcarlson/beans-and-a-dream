@@ -32,13 +32,82 @@ def main():
 
     # Register the UDF for converting the (often mixed) frac quantities to numbers to work with
     # https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.functions.udf.html
-    convert_fractions_udf = convert_fractions_udf_wrapper(convert_to_float=True)
-    df_to_numeric_quantities = df.withColumn("RecipeIngredientQuantities", convert_fractions_udf(col("RecipeIngredientQuantities")))
-   
-    # TODO: Since we want the documents to be organized differently than the original recipe format,
-    # before loading to MongoDB, do that here. Whatever you think would be another interesting way to store it,
-    # to compare efficiency
 
+    #register UDF
+    pad_Ingred_Quant_udf = F.udf(pad_Ingred_Quant, ArrayType(ArrayType(StringType())))
+    
+    #replace columns with updated padded columns
+    df_padded = df.withColumns({"RecipeIngredientParts": pad_Ingred_Quant_udf(df.RecipeIngredientParts, df.RecipeIngredientQuantities)[0], 
+                                "RecipeIngredientQuantities": pad_Ingred_Quant_udf(df.RecipeIngredientParts, df.RecipeIngredientQuantities)[1]})
+    #print(df_padded.filter(F.size(df_padded.RecipeIngredientQuantities) ==  F.size(df_padded.RecipeIngredientParts)).count())
+
+#I kept running out of memory for the explode/join/group so had to do in batches
+    #convert quantity field to numbers. Break vqalues into 20 batches
+    convert_fractions_udf = convert_fractions_udf_wrapper(convert_to_float=True)
+    df_to_numeric_quantities = df_padded.withColumns(
+        {"RecipeIngredientQuantities" : convert_fractions_udf(df_padded.RecipeIngredientQuantities),
+         "batchID" : col("RecipeID") % 20})
+    #print(df_to_numeric_quantities.select(col("batchID")).distinct().count())
+
+    #blank element to collect batches
+    df_batches = []
+
+    #creates array of the 20 batchIDs
+    #iterates through "batchID" to process the data in batches. 
+    for batchNum in df_to_numeric_quantities.select(col("batchID")).distinct().collect():
+        #sets current dataframe to current batch in iterator
+        batch_group = df_to_numeric_quantities.filter(col("batchID") == batchNum[0]) 
+
+        #breaks apart ingredient arrays so each ingredient is on its own line
+        #gives each line a rowID
+        df_exploded_I = batch_group.select(
+            col("RecipeID"),
+            col("Name"), 
+            F.explode(col("RecipeIngredientParts")).alias("Ingredient")).withColumn('RowID', F.monotonically_increasing_id())
+
+        #same as above but for quantity
+        df_exploded_Q = batch_group.select(
+            col("RecipeID"),
+            col("Name"), 
+            F.explode(col("RecipeIngredientQuantities")).alias("Quantity")).withColumn('RowID', F.monotonically_increasing_id())
+
+        #joins ingredient and quantity df based on rowID
+        #groups data by ingredient. puts RecipeID, name, and quantity as a list of lists [{R, N, Q}, {R, N, Q}, {R, N, Q}, ...]
+        df_QI = df_exploded_I.join(
+            df_exploded_Q, [df_exploded_I.RowID == df_exploded_Q.RowID]).groupBy(df_exploded_I.Ingredient).agg(
+            F.collect_list(
+                struct(
+                    df_exploded_I.RecipeID,
+                    df_exploded_I.Name,
+                    df_exploded_Q.Quantity).alias("Recipes")
+                    )
+            )
+
+        #appends each batch to df_batches
+        df_batches.append(df_QI)       
+    
+    
+    #unions each dataframe batch in list. 
+    df_JSON_Ready = df_batches[0] #starts structure
+    for batch in df_batches[1:]: 
+        df_JSON_Ready = df_JSON_Ready.union(batch)
+    
+    print(df_JSON_Ready.show(5))
+    
+    #transforms to JSON format
+    #json_list = df_JSON_Ready.limit(10).toJSON().collect()
+
+    #put dataframe into readable format to check
+    # for i, json_str in enumerate(json_list):
+    #     parsed_json = json.loads(json_str)
+    #     print(f"\nConverted row {i + 1}:")
+    #     print(json.dumps(parsed_json, indent=4))
+
+
+
+
+
+    
     end_preprocessing_time = time.time()
     elapsed_preprocessing_time = end_preprocessing_time - start_preprocessing_time
     print(f"Time taken for preprocessing: {elapsed_preprocessing_time} seconds")

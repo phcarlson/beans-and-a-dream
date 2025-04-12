@@ -1,4 +1,4 @@
-from pymongo import MongoClient
+from pymongo import AsyncMongoClient
 from pymongo.server_api import ServerApi
 import os 
 
@@ -13,20 +13,19 @@ class DBClient:
         
        # Per this doc https://www.mongodb.com/docs/manual/administration/connection-pool-overview/, 
        # we will only create one client instance throughout the application PER CLUSTER
-       # TODO experiment with mult clusters ???
-        self.client = MongoClient(self.uri, server_api=ServerApi('1'))
+        self.client = AsyncMongoClient(self.uri, server_api=ServerApi('1'))
         
         # Test connection
         self._test_connection()
     
-    def _test_connection(self):
+    async def _test_connection(self):
         try:
-            self.client.admin.command('ping')
+            await self.client.admin.command('ping')
             print("Pinged your deployment. You successfully connected to MongoDB!")
         except Exception as e:
             print("MongoDB connection failed!")
             print(e)
     
-    def get_database(self, database_name):
+    async def get_database(self, database_name):
         """Returns a database instance, creating it if it does not exist only once data starts to be added."""
         return self.client[database_name]

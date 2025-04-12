@@ -1,0 +1,18 @@
+{
+    "indexes": [
+        {
+            "Ingredients.IngredientName": 1,
+            "Ingredients.Quantity": 1
+        },
+        {
+            "Keywords": 1
+        }
+    ],
+    
+    "collation": {
+        "collation": {
+            "locale": "simple",
+            "strength": 2
+        }
+    }
+}

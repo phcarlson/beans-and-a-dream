@@ -3,7 +3,10 @@
     "dynamic": false,
 
     "fields": {
-      
+      "Keywords": {
+        "type": "string"
+      },
+
       "Ingredients": {
         "type": "document",
         "dynamic": false,

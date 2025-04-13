@@ -29,3 +29,6 @@ class DBClient:
     async def get_database(self, database_name):
         """Returns a database instance, creating it if it does not exist only once data starts to be added."""
         return self.client[database_name]
+
+    async def close_connection(self):
+        self.client.close()

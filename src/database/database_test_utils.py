@@ -1,3 +1,7 @@
+
+import random
+
+# TODO come up with simple to complex queries for our benchmarking consistently
 def load_test_queries(query_set_name):
     if query_set_name == "example_set":
         test_queries = [
@@ -10,11 +14,25 @@ def run_test_queries(queries, collection):
         results = list(collection.find(query))
         print(f"Query {i+1}: {query} -> {len(results)} results found")
 
-# run_test_queries(test_queries)
 
-# https://stackoverflow.com/questions/25586901/how-to-find-document-and-single-subdocument-matching-given-criterias-in-mongodb
+async def get_distinct_ingredients(collection):
+    pipeline = [
+        # Treat each array elem as a doc
+        { "$unwind": "$Ingredients" },  
+        # Get all of the same ingredient
+        { "$group": { "_id": "$Ingredients.IngredientName" } }, 
+        # Make it such that the distinct vals become the ID and that's all that is left in the doc
+        { "$project": { "_id": 0, "IngredientName": "$_id" } }
+    ]
 
-# https://www.mongodb.com/community/forums/t/mongodb-query-to-filter-documents-and-subdocuments/205536
+    # Run the pipeline and asyncronously collect all of the results in memory... BE WARY lol
+    ingredient_names = []
+    async for document in await collection.aggregate(pipeline):
+        ingredient_names.append(document['IngredientName'])
+    return ingredient_names
 
-# https://www.mongodb.com/community/forums/t/search-aggragation-elemmatches-equivalent/151220/6
-# https://www.mongodb.com/docs/atlas/atlas-search/embedded-document/
+async def get_n_random_ingredients(collection, n):
+    static_names = await get_distinct_ingredients()
+    sampled_ingredients = random.sample(static_names, n)
+    return sampled_ingredients
+

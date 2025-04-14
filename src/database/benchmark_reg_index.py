@@ -6,6 +6,9 @@ import time
 import numpy as np 
 from datetime import datetime
 
+""" This module/script iterates over a variety of index designs to test for the MongoDB Atlas database queries, 
+by measuring queries per second (QPS) and storing the outputs to a csv for downstream analysis. """
+
 async def keep_querying(e, collection, counter_lock, counter, latencies, worker_id):
     while not e.is_set():
         query = build_query(worker_id)
@@ -141,8 +144,9 @@ async def run_reg_index_benchmarks(duration_of_test=10):
 
 
     df = pd.DataFrame(qps_results)
-    df.to_csv(f"benchmark_results_{datetime.now()}.csv", index=False)
-    print("\nSaved results to benchmark_results.csv")
+    benchmark_file_name = f"reg_benchmark_results_{datetime.now()}.csv"
+    df.to_csv(benchmark_file_name, index=False)
+    print(f"\nSaved results to '{benchmark_file_name}'")
     # await client.close_connection()
     
 async def main():   

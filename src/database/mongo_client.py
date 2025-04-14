@@ -14,9 +14,6 @@ class DBClient:
        # Per this doc https://www.mongodb.com/docs/manual/administration/connection-pool-overview/, 
        # we will only create one client instance throughout the application PER CLUSTER
         self.client = AsyncMongoClient(self.uri, server_api=ServerApi('1'))
-        
-        # Test connection
-        self._test_connection()
     
     async def _test_connection(self):
         try:

@@ -155,6 +155,7 @@ def try_literal_eval(csv_string):
     try:
         return literal_eval(csv_string)
     except ValueError:
+        print("Keep an eye on the output, quantities and ingredients did not pass literal_eval.")
         return csv_string
 
 

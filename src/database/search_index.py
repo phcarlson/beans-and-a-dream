@@ -1,9 +1,9 @@
 from pymongo.operations import SearchIndexModel
-from mongo_client import DBClient
 import json
+import asyncio
 
 # https://www.mongodb.com/docs/languages/python/pymongo-driver/current/indexes/
-def create_search_index(database_name, collection_name, index_name, 
+async def create_search_index(client, database, collection, index_name, 
                  search_index_model_instance = None, 
                  search_index_model_file_name = None):
     
@@ -12,11 +12,7 @@ def create_search_index(database_name, collection_name, index_name,
     or specifying file name to the JSON definition
     in directory 'search_indexes_to_try' """
 
-    try:    
-        client = DBClient()
-        db = client.get_database(database_name)
-        collection = db[collection_name]
-
+    try:   
         specified_model = None
         if search_index_model_instance != None:
             specified_model = search_index_model_instance
@@ -35,10 +31,10 @@ def create_search_index(database_name, collection_name, index_name,
         
         if specified_model != None:
             # Now to actually create the index
-            result = collection.create_search_index(model=specified_model)
-            print(result)
-    finally:
-        client.close()
+            await collection.create_search_index(model=specified_model)
+    except Exception as e:
+        print("There was a problem creating the search index {}!".format(index_name))
+        print("The exception: {}".format(e))
 
 def main():
     #TODO: Read about search partitions, see if it applies, and run experiments with it https://www.mongodb.com/docs/atlas/atlas-search/create-index/

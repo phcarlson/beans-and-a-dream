@@ -22,7 +22,7 @@ def run_test_queries(queries, collection):
         print(f"Query {i+1}: {query} -> {len(results)} results found")
 
 
-def get_distinct_ingredients(collection):
+async def get_distinct_ingredients(collection):
     pipeline = [
         # Treat each array elem as a doc
         { "$unwind": "$Ingredients" },  
@@ -34,12 +34,12 @@ def get_distinct_ingredients(collection):
 
     # Run the pipeline and asyncronously collect all of the results in memory... BE WARY lol
     ingredient_names = []
-    for document in  collection.aggregate(pipeline):
+    async for document in await collection.aggregate(pipeline):
         ingredient_names.append(document['IngredientName'])
-    # ingredient_names =  collection.distinct("Ingredients.IngredientName")
+    # ingredient_names = await collection.distinct("Ingredients.IngredientName")
     return ingredient_names
 
-def get_min_and_max_quantities(collection):
+async def get_min_and_max_quantities(collection):
     pipeline = [
         # Flatten all ingredients entries from each doc into one big list
         {"$unwind": "$Ingredients"},
@@ -55,19 +55,17 @@ def get_min_and_max_quantities(collection):
     ]
 
 
-    min_and_max_cursor =  collection.aggregate(pipeline)
-    min_and_max =  min_and_max_cursor.to_list()
+    min_and_max_cursor = await collection.aggregate(pipeline)
+    min_and_max = await min_and_max_cursor.to_list()
 
     return  min_and_max[0]["minQuantity"],  min_and_max[0]["maxQuantity"]
 
-def get_n_random_ingredients(collection, n):
-    static_names =  get_distinct_ingredients(collection)
+async def get_n_random_ingredients(collection, n):
+    static_names = await get_distinct_ingredients(collection)
     sampled_ingredients = random.sample(static_names, n)
     return sampled_ingredients
 
-
-
-def generate_n_random_simple_criteria(collection, n=10000):
+async def generate_n_random_simple_criteria(collection, n=10000):
     """ Our definition of 'simple' criteria are:
       a single ingredient and exact quantity, 
       a single ingredient and quantity range
@@ -76,8 +74,8 @@ def generate_n_random_simple_criteria(collection, n=10000):
       This generates the list of criteria to write to a csv file rather than the queries themselves. 
       That way, if we change the way we construct a query, the generated criteria can simply be reused.
     """
-    distinct_ingredients =  get_distinct_ingredients(collection)
-    min_quantities, max_quantities =  get_min_and_max_quantities(collection)
+    distinct_ingredients =  await get_distinct_ingredients(collection)
+    min_quantities, max_quantities =  await get_min_and_max_quantities(collection)
     
     criteria_rows = []
 
@@ -105,7 +103,7 @@ def generate_n_random_simple_criteria(collection, n=10000):
     return criteria_df
 
 
-def generate_n_random_complex_criteria(collection, n):
+async def generate_n_random_complex_criteria(collection, n):
     """ Our definition of 'complex' criteria are:
     over 3 ingredients with quantity ranges
 
@@ -113,8 +111,8 @@ def generate_n_random_complex_criteria(collection, n):
     This generates the list of criteria to write to a csv file rather than the queries themselves. 
     That way, if we change the way we construct a query, the generated criteria can simply be reused.
     """
-    distinct_ingredients =  get_distinct_ingredients(collection)
-    min_quantities, max_quantities =  get_min_and_max_quantities(collection)
+    distinct_ingredients =  await get_distinct_ingredients(collection)
+    min_quantities, max_quantities = await get_min_and_max_quantities(collection)
 
     criteria_rows = []
 
@@ -188,7 +186,7 @@ def typefy(r_sample) -> pd.DataFrame:
 
 
 
-def query_creator(collection, r_sample) -> pd.DataFrame: #creates "or" filter per row of criteria
+async def query_creator(collection, r_sample) -> pd.DataFrame: #creates "or" filter per row of criteria
 
     '''function that takes either simple or complex generated criteria and translate them into mongoDB filter syntax
         r_sample should be either pd.dataframe that is created from generators or filepath to generator created CSV
@@ -249,7 +247,7 @@ def query_creator(collection, r_sample) -> pd.DataFrame: #creates "or" filter pe
         db_query = {"$or" : recipe}
 
         #query the database whynot. see the fruits of your labor
-        print(f'Query {index+1} : {db_query}', f'{collection.count_documents(db_query)} results found.\n', sep= '\n')
+        print(f'Query {index+1} : {db_query}', f'{await collection.count_documents(db_query)} results found.\n', sep= '\n')
 
         #add all row queries together with associated type and exact reference 
         recipeQueries.append({
@@ -270,7 +268,7 @@ def query_creator(collection, r_sample) -> pd.DataFrame: #creates "or" filter pe
 
 
 
-def csv_query_reader(collection, csv_string):
+async def csv_query_reader(collection, csv_string):
     '''func to read in previosly created queries and query database'''
     try:
         with open(csv_string, "r") as file:
@@ -283,32 +281,32 @@ def csv_query_reader(collection, csv_string):
                 db_query = literal_eval(row["Query"])                
 
                 #print(db_query, "**"*5 ,sep= '\n')
-                print(f'Query {index+1} : {db_query}', f'{collection.count_documents(db_query)} results found.\n', sep= '\n')       
+                print(f'Query {index+1} : {db_query}', f'{await collection.count_documents(db_query)} results found.\n', sep= '\n')       
     except:
         print("ERROR: Check csv file. File must be result of query_creator().")
         
     
 
 
-def main():
+async def main():
     client = DBClient()
     database_name = "test_db_ranges"
     collection_name = "test_recipes_range_support"
-    db = client.get_database(database_name)
+    db = await client.get_database(database_name)
     collection = db[collection_name]
     
     #smpl_crt = generate_n_random_simple_criteria(collection, n=2)
-    cmpx_crt = generate_n_random_complex_criteria(collection, n=2)
+    cmpx_crt = await generate_n_random_complex_criteria(collection, n=2)
 
     #csv_query_reader(collection, "C:\\Users\\travi\\OneDrive\\Documents\\Grad School\\532FinalProj\\complex_test_queries_20250420_154017.csv")
 
 
  #queryCreator returns a list of queries (1 per n). will need to query datafram index or come up with another way
  #query inside query functions? could pass collection in and just run through queries as they are generated
-    filterQueries = query_creator(collection, cmpx_crt)
+    filterQueries = await query_creator(collection, cmpx_crt)
 
 
     #print(collection.count_documents(filterQueries.iloc[0, 2]))
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

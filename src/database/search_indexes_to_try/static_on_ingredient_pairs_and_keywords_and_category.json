@@ -4,10 +4,17 @@
 
     "fields": {
       
+      "RecipeCategory": {
+        "type": "string"
+      },
+
+      "Keywords": {
+        "type": "string"
+      },
+
       "Ingredients": {
         "type": "document",
         "dynamic": false,
-
         "fields": {
           "IngredientName": {
             "type": "string"

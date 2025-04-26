@@ -52,6 +52,10 @@ class IngredientAtlasSearch:
     def getIngredientList(self) -> IngredientList:
         '''Returns the ingredientList of the search'''
         return self.ingredientList
+    
+    def setIngredientList(self, new_ingredient_list: IngredientList) -> None:
+        '''Sets the ingredient list manually'''
+        self.ingredientList = new_ingredient_list
 
     def getRecipeList(self) -> RecipeList:
         '''Returns the current IngredientList of the user'''

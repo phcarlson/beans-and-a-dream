@@ -6,6 +6,10 @@ class IngredientList():
     def __init__(self):
         '''initialize the class with an empty ingredient list'''
         self.ingredients: list[Ingredient] = []
+
+    def __init__(self, ):
+        '''initialize the class with an empty ingredient list'''
+        self.ingredients: list[Ingredient] = []
         
     def getIngredients(self) -> list[Ingredient]:
         '''Returns the current IngredientList of the user'''

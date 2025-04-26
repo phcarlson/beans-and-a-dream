@@ -10,9 +10,9 @@ class RecipeList():
         '''Returns the current IngredientList of the user'''
         return self.recipes
     
-    def updateRecipes(self, new_recipes: list[any]) -> None:
-        '''updates the recipe list with a new recipe list'''
-        self.recipes = new_recipes
+    async def updateRecipes(self, new_recipes: list[any]) -> None:
+        '''updates the recipe list with a new recipe list (updated for ascyncio)'''
+        self.recipes = await new_recipes.to_list()
          
     def __str__(self):
         '''creates print string for the Recipe List'''

@@ -65,7 +65,7 @@ async def get_n_random_ingredients(collection, n):
     sampled_ingredients = random.sample(static_names, n)
     return sampled_ingredients
 
-async def generate_n_random_simple_criteria(collection, n=10000):
+async def generate_n_random_simple_criteria(collection, n=10000, save_criteria = True):
     """ Our definition of 'simple' criteria are:
       a single ingredient and exact quantity, 
       a single ingredient and quantity range
@@ -95,15 +95,17 @@ async def generate_n_random_simple_criteria(collection, n=10000):
         })
     
     criteria_df = pd.DataFrame(criteria_rows)
-    now = datetime.now()
-    datetime_file = now.strftime("%Y%m%d_%H%M%S")
-    criteria_df.to_csv(f'simple_test_criteria_{datetime_file}.csv', index=False)
+
+    if save_criteria:
+        now = datetime.now()
+        datetime_file = now.strftime("%Y%m%d_%H%M%S")
+        criteria_df.to_csv(f'simple_test_criteria_{datetime_file}.csv', index=False)
     
     #can use as a source for query construction
     return criteria_df
 
 
-async def generate_n_random_complex_criteria(collection, n):
+async def generate_n_random_complex_criteria(collection, n, save_criteria = True):
     """ Our definition of 'complex' criteria are:
     over 3 ingredients with quantity ranges
 
@@ -138,10 +140,11 @@ async def generate_n_random_complex_criteria(collection, n):
     
     criteria_df = pd.DataFrame(criteria_rows)
 
-    #grab current datetime and transform for legal file name
-    now = datetime.now()
-    datetime_file = now.strftime("%Y%m%d-%H%M%S")
-    criteria_df.to_csv(f'complex_test_criteria_{datetime_file}.csv', index=False) #{datetime.now()}
+    if (save_criteria):
+        #grab current datetime and transform for legal file name
+        now = datetime.now()
+        datetime_file = now.strftime("%Y%m%d-%H%M%S")
+        criteria_df.to_csv(f'complex_test_criteria_{datetime_file}.csv', index=False) #{datetime.now()}
     
     #can use as a source for query construction
     return criteria_df

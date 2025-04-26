@@ -7,7 +7,7 @@ class DBClient:
         # Get creds stored in safe place
         self.user = os.environ.get("MONGO_RECIPE_USER", default=None)
         self.password = os.environ.get("MONGO_RECIPE_PW", default=None)
-        
+
         # Create connection string based on creds
         self.uri = f'mongodb+srv://{self.user}:{self.password}@reverse-index.xkyk7ik.mongodb.net/?retryWrites=true&w=majority&appName=Reverse-Index'
         

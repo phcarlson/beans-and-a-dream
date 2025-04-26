@@ -5,23 +5,25 @@ import sys
 sys.path.append('../')
 
 from database import DBClient
+import asyncio 
 from util import IngredientList
 from util import RecipeList
 from util import Ingredient
     
 class IngredientAtlasSearch:
     '''A class that takes in a range of ingredients and quantities from the user, and computes a query on the database using an embedded_document search index'''
-    def __init__(self, client: DBClient, db: str = "test_db_ranges", collection: str = "test_recipes_range_support", search_index: str = "ING-EMB-DYN", index_type: str = "embeddedDocument"):
+    def __init__(self, client: DBClient, db: any, collection_name: str = "test_recipes_range_support", search_index: str = "ING-EMB-DYN", index_type: str = "embeddedDocument"):
         '''Initializes the class with the provided client, specified/default database, collection and index, and an empty Ingredient List'''
         self.client: DBClient = client
-        self.db: str = self.client.get_database(db)
-        self.collection: str = collection
+        self.db: str = db
+        self.collection: str = collection_name
         self.search_index: str = search_index
         self.index_type: str = index_type
         self.ingredientList: IngredientList = IngredientList()
         self.recipeList: RecipeList = RecipeList()
+        self.query: str = ""
 
-    def run_searchTest(self) -> None:
+    async def run_searchTest(self) -> None:
         '''Backend function to allow user to interact on the console to create ingredient searches'''
         user_quit = False
         print("Welcome to the query search tester!") 
@@ -34,7 +36,7 @@ class IngredientAtlasSearch:
             elif choice == '2':
                 self.adjustIngredients()
             elif choice == '3':
-                self.run_recipeSearch()
+                await self.run_recipeSearch()
             elif choice == '4':
                 print(self.recipeList)
             elif choice == 'q':
@@ -49,6 +51,9 @@ class IngredientAtlasSearch:
         print("\t3: Run a recipe search")
         print("\t4: See retrieved recipes")
     
+    def getQueryResults(self) -> str:
+        return self.recipeList
+    
     def getIngredientList(self) -> IngredientList:
         '''Returns the ingredientList of the search'''
         return self.ingredientList
@@ -60,6 +65,10 @@ class IngredientAtlasSearch:
     def getRecipeList(self) -> RecipeList:
         '''Returns the current IngredientList of the user'''
         return self.recipeList
+    
+    def getQuery(self) -> str:
+        '''Returns the current query for the search'''
+        return self.query
     
     def adjustIngredients(self) -> None:
         '''Backend function to allow user to adjust ingredients'''
@@ -130,7 +139,7 @@ class IngredientAtlasSearch:
                         else:
                             print("Invalid input!")
    
-    def run_recipeSearch(self):
+    async def run_recipeSearch(self):
         '''runs the updateRecipes function using the main ingredient chosen by the user'''
         ingredient = input("Which ingredient do you want to use as the main ingredient? (enter d to use the default ingredient, i to get your ingredient list, or q to go back): ")
         if ingredient == 'q':
@@ -155,15 +164,16 @@ class IngredientAtlasSearch:
                     except ValueError:
                         print("Please enter a number!")
             if ingredient == 'd':
-                self.queryRecipes(limit = limit)
-                print("Updated Recipes!")
+                self.generateQuery(limit = limit)
             else:
-                self.queryRecipes(mainIngredient = self.ingredientList.getIngredientbyIndex(index), limit = limit)
-                print("Updated Recipes!")
+                self.generateQuery(mainIngredient = self.ingredientList.getIngredientbyIndex(index), limit = limit)
+
+            await self.queryRecipes()
+            print("Updated Recipes!")
             
 
-    def queryRecipes(self, mainIngredient = None, limit = 10) -> RecipeList:
-        '''returns a list of documents that match the Ingredient List via Atlas Search'''
+    def generateQuery(self, mainIngredient = None, limit = 10) -> str:
+        '''generates the query used by mongodb for this atlas_Search'''
         index = self.ingredientList.getIngredientIndexbyName(mainIngredient)
         if index == -1:
             mainIngredient = self.ingredientList.getIngredientbyIndex(0)
@@ -176,7 +186,7 @@ class IngredientAtlasSearch:
 
         mainIngredient_should, otherIngredients_shoulds = self.create_shoulds(mainIngredient, otherIngredients)
 
-        agg = [
+        self.query = [
             {
                 "$search": {
                     "index": self.search_index,
@@ -212,9 +222,13 @@ class IngredientAtlasSearch:
                 "$limit": limit
             }
         ]
-    
-        new_recipes = self.db[self.collection].aggregate(agg)
-        self.recipeList.updateRecipes(new_recipes)
+
+        return self.query
+
+    async def queryRecipes(self) -> RecipeList:
+        '''returns a list of documents using the stored query'''    
+        new_recipes = await self.db[self.collection].aggregate(self.query)
+        await self.recipeList.updateRecipes(new_recipes)
         return self.recipeList
 
     def create_shoulds (self, mainIngredient: Ingredient, otherIngredients: list[Ingredient]) -> tuple[list[dict[str, dict[str, int|float]]], list]:
@@ -278,14 +292,16 @@ class IngredientAtlasSearch:
         return mainIngredient_should, otherIngredients_should
         
 
-def main():
+async def main():
     '''main function --> creates an ingredient atlas search and runs a testing func'''
     client = DBClient()
-    ingredient_search = IngredientAtlasSearch(client)
-    ingredient_search.run_searchTest()
+    database_name = "test_db_ranges"
+    db = await client.get_database(database_name)
+    ingredient_search = IngredientAtlasSearch(client, db)
+    await ingredient_search.run_searchTest()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
 
 
 '''

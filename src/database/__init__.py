@@ -6,5 +6,4 @@ in addition to anything required for actually connecting to the cloud DB to use 
 from .mongo_client import DBClient
 from .search_index import create_search_index
 from .regular_index import create_reg_index
-
-from .database_test_utils import load_test_queries
+from .database_test_utils import generate_n_random_complex_criteria, typefy, csv_query_reader

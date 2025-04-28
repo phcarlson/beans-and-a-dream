@@ -1,16 +1,16 @@
 import sys
 sys.path.append('../')
 
-from database_test_utils import generate_n_random_complex_criteria, typefy
+from database import generate_n_random_complex_criteria, typefy
 from retrieval import IngredientAtlasSearch
 from util import IngredientList
-
+from datetime import datetime
 
 import pandas as pd
 import asyncio 
 from database.mongo_client import DBClient
 
-async def atlas_search_creator(client, db, r_sample, collection_name: str = "test_recipes_range_support", search_index: str = "ING-EMB-DYN", index_type: str = "embeddedDocument") -> list[IngredientAtlasSearch]:
+async def atlas_search_creator(client, db, r_sample, collection_name: str = "test_recipes_range_support", search_index: str = "ING-EMB-DYN", index_type: str = "embeddedDocument", save_searches_to_csv: bool = True) -> list[IngredientAtlasSearch]:
     '''function that takes a complex generated criteria and translates it into a list atlas searches using the class'''
     df = typefy(r_sample)
     atlas_searches = []
@@ -42,7 +42,7 @@ async def atlas_search_creator(client, db, r_sample, collection_name: str = "tes
                     qntMin = min(qntMinMax)
                     qntMax = max(qntMinMax)
 
-                    ing_list.addIngredientRanged(ing.replace("'", ""), float(qntMin), float(qntMax))
+                    ing_list.addIngredientRanged(str(ing), float(qntMin), float(qntMax))
                     
                     #increase index. next ingredient will get next 2 quantity values
                     qntSliceStart +=2
@@ -55,7 +55,18 @@ async def atlas_search_creator(client, db, r_sample, collection_name: str = "tes
 
         '''Uncomment below if you also want to run the query and have the instance get the recipe results'''
         #await current_search.queryRecipes()
-    
+
+    if save_searches_to_csv:
+        searches_generated = []
+        for search_obj in atlas_searches:
+            search = search_obj.generateQuery()
+            searches_generated.append({"Search": search})
+        
+        atlas_searches_df = pd.DataFrame(searches_generated)
+        now = datetime.now()
+        datetime_file = now.strftime("%Y%m%d_%H%M%S")
+        atlas_searches_df.to_csv(f'{qType}_test_searches_{datetime_file}.csv', index=False)
+
     #returns list of atlas_searches. Simply choose one and run atlas_search.run_recipeSearch, and print it with print(self.recipeList)
     return atlas_searches   
     
@@ -68,8 +79,8 @@ async def main():
     collection = db[collection_name]
 
     # Adjust n to create more atlas searches
-    cmpx_crt = await generate_n_random_complex_criteria(collection, n=3, save_criteria = False)
-    atlas_searches = await atlas_search_creator(client, db, cmpx_crt)
+    # cmpx_crt = await generate_n_random_complex_criteria(collection, n=10000, save_criteria = True)
+    atlas_searches = await atlas_search_creator(client, db, 'complex_test_criteria_20250427-204518.csv')
     
     # looking at just the first search, you can do it for as man as you want
     first_search = atlas_searches[0]

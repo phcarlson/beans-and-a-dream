@@ -28,4 +28,4 @@ class DBClient:
         return self.client[database_name]
 
     async def close_connection(self):
-        self.client.close()
+        await self.client.close()

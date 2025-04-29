@@ -5,7 +5,7 @@
     "fields": {
       
       "Ingredients": {
-        "type": "document",
+        "type": "embeddedDocuments",
         "dynamic": false,
 
         "fields": {

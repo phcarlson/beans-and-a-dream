@@ -7,3 +7,4 @@ from .mongo_client import DBClient
 from .search_index import create_search_index
 from .regular_index import create_reg_index
 from .database_test_utils import generate_n_random_complex_criteria, typefy, csv_query_reader
+from .test_utils_atlas import atlas_search_creator

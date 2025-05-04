@@ -70,6 +70,13 @@ class IngredientAtlasSearch:
         '''Returns the current query for the search'''
         return self.query
     
+    def updateIngredient(self, ingredient_name, exact = True, quantity = 1, lower_bound = 0, upper_bound = 1):
+        '''Updates the quantity/ranges for an ingredient (creates one if it doesn't exist)'''
+        if exact:
+            self.ingredientList.updateIngredientExact(ingredient_name, quantity)
+        else:
+            self.ingredientList.updateIngredientRange(ingredient_name, lower_bound, upper_bound)
+
     def adjustIngredients(self) -> None:
         '''Backend function to allow user to adjust ingredients'''
         user_quit = False
@@ -305,7 +312,7 @@ if __name__ == "__main__":
 
 
 '''
-KEEP! Search index used for reference
+KEEP! Default search index used for reference (and in case of deletion/override in Mongo)
 {
   "mappings": {
     "dynamic": true,

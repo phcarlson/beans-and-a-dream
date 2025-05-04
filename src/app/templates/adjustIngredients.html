@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ingredient Search</title>
+    <link rel="stylesheet" href="../static/style.css" />
+    <script>
+        function submit_form() {
+            document.formu1.submit();
+            document.formu1.reset(); 
+        }
+    </script>
+  </head>
+  <body>
+    <div class="ingredient_adder">
+        <h1>Add Ingredient</h1>
+        <form name = "formu1" method="POST">
+
+            <div class="form__fieldset">
+                <label for="ingredient" class="form__label">Ingredient:</label>
+                <input type="text" name="ingredient" id="ingredient" class="form__input" placeholder="Enter Ingredient"/>
+            </div>
+
+            <div class="form__fieldset">
+                <label for="exact" class="form__label">Exact:</label>
+                <select name="exact" id="exact" class="form__input form__select">
+                    <option value="Exact">Exact</option>
+                    <option value="Ranged">Ranged</option>
+                </select>
+            </div>
+
+            <div class="form__fieldset">
+                <label for="quantity" class="form__label">Quantity:</label>
+                <input type="number" name="quantity" id="quantity" class="form__input" value="1"/>
+            </div>
+
+            <div class="form__fieldset">
+                <label for="lower" class="form__label">Lower Bound:</label>
+                <input type="number" name="lower" id="upper" class="form__input" value="0"/>
+            </div>
+
+            <div class="form__fieldset">
+                <label for="upper" class="form__label">Upper Bound:</label>
+                <input type="number" name="upper" id="upper" class="form__input" value="1"/>
+            </div>
+
+            <div class="form__fieldset">
+                <input
+                    class="form__submit form__input"
+                    type="button"
+                    value="Add ingredient"
+                    onclick = "submit_form()"
+                />
+
+                <input
+                    class="search__submit form__input"
+                    type="button"
+                    value="Search for Recipes"
+                    onclick = " window.open('http://localhost:8000/displaySearch','_blank')"
+                />
+            </div>
+
+        </form>        
+    </div>
+
+    <div id = "ingredientList">
+        <script>
+            fetch("/getIngredients")
+                .then(response => response.json())
+                .then(data => {
+                    let text = "<br> Ingredients: <br>";
+                    for (let i = 0; i < data["ingredients"].length; i++) {
+                        let cur_ing = data["ingredients"][i]
+                        console.log(cur_ing["name"])
+                        text += "<pre> \tName: " + cur_ing["name"] + "</pre>"
+                        text += "<pre> \t\tExact: " + cur_ing["exact"] + "</pre>"
+                        text += "<pre> \t\tQuantity/Range: " + cur_ing["quantities"] + "</pre>"
+                    }
+                    document.getElementById("ingredientList").innerHTML = text;
+                });
+        </script>
+    </div>
+
+  </body>
+  
+</html>

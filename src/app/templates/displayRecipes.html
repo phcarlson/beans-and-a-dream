@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Search Results</title>
+    <link rel="stylesheet" href="../static/style.css" />
+  </head>
+  <body>
+    <div class="recipe_search">
+        <h1>Suggested Recipes:</h1>
+    </div>
+
+    <div id = "recipeList">
+        <div class = "recipes" id = "recipes"></div>
+
+        <script>
+            fetch("/getRecipes")
+                .then(response => response.json())
+                .then(data => {
+                    const recipeList = document.getElementById('recipes')
+                    data["recipes"].forEach(r => {
+
+                        // create recipe div
+                        const recipeDiv = document.createElement('div')
+                        recipeDiv.className = 'recipe_box'
+
+                        // add recipe name text
+                        const recipeName = document.createElement('p');
+                        recipeName.textContent = `Recipe: ${r["name"]}`;
+                        recipeDiv.appendChild(recipeName);
+
+                        // add recipe calories text
+                        const recipeCalories = document.createElement('p');
+                        recipeCalories.textContent = `Calories: ${r["calories"]}`;
+                        recipeDiv.appendChild(recipeCalories);
+
+                        // add recipe description in a details element
+                        const recipeDesc = document.createElement('details');
+                        recipeDesc.className = 'details'
+
+                        const descSummary = document.createElement('summary');
+                        descSummary.textContent = 'Description';
+                        recipeDesc.appendChild(descSummary)
+
+                        const descContent = document.createElement('p');
+                        descContent.textContent = `${r["desc"]}`;
+                        recipeDesc.appendChild(descContent)
+
+                        recipeDiv.appendChild(recipeDesc);
+
+                        // add recipe ingredients as a list in a details element
+                        const recipeIng = document.createElement('details');
+                        recipeIng.className = 'details'
+
+                        const ingSummary = document.createElement('summary');
+                        descSummary.textContent = 'Ingredients';
+                        recipeIng.appendChild(descSummary)
+
+                        const ingContent = document.createElement('l');
+                        r["ingredients"].forEach(i => {
+                            const ingItem = document.createElement('ul');
+
+                            const ingName = document.createElement('li');
+                            ingName.textContent = `Name: ${i["ingredient"]}`;
+                            ingItem.appendChild(ingName);
+
+                            const ingQuant = document.createElement('li');
+                            ingQuant.textContent = `Quantity: ${i["quantity"]}`;
+                            ingItem.appendChild(ingQuant);
+
+                            ingContent.appendChild(ingItem);
+                        })
+                        recipeIng.appendChild(ingContent)
+
+                        recipeDiv.appendChild(recipeIng);
+
+                        // add recipe instructions as a list in a details element
+                        const recipeInst = document.createElement('details');
+                        recipeInst.className = 'details'
+
+                        const instSummary = document.createElement('summary');
+                        instSummary.textContent = 'Instructions';
+                        recipeInst.appendChild(instSummary)
+
+                        const instContent = document.createElement('ol');
+                        r["instructions"].forEach(i => {
+                            const instruction = document.createElement('li');
+                            instruction.textContent = `${i}`;
+                            instContent.appendChild(instruction);
+                        })
+                        recipeInst.appendChild(instContent)
+
+                        recipeDiv.appendChild(recipeInst);
+
+                        // add created recipe div to html document
+                        recipeList.appendChild(recipeDiv)
+                    });
+                });
+
+        </script>
+
+    </div>
+
+  </body>
+  
+</html>

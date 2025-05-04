@@ -64,6 +64,10 @@ class Ingredient():
         else:
             self.exact -= quantity
 
+    def updateQuantityExact(self, quantity: int|float) -> None:
+        '''set the exact quantity of the ingredient by a specific amount'''
+        self.exact = quantity
+
     def updateQuantityRange(self, newLower: int|float, newUpper: int|float) -> None:
         '''update the range quantities of the ingredient by a specific amount'''
         self.lowerBound = newLower

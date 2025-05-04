@@ -52,6 +52,14 @@ class IngredientList():
             else:
                 self.ingredients[index].decreaseQuantityExact(quantity)
 
+    def updateIngredientExact(self, name: str, quantity: int|float = -1) -> None:
+        '''adds a specific quantity of an Ingredient to the users IngredientList- adds a new ingredient if it doesn't exist in the list'''
+        index = self.getIngredientIndexbyName(name)
+        if index == -1:
+            self.ingredients.append(Ingredient(name, False, [quantity, None, None]))
+        else:
+            self.getIngredientbyIndex(index).updateQuantityExact(quantity)
+
     def addIngredientRanged(self, name: str, lower_bound: int|float, upper_bound: int|float) -> None:
         '''adds a ranged variant of an Ingredient to the users IngredientList'''
         if lower_bound > upper_bound or lower_bound < 0 or upper_bound < 0:
@@ -64,7 +72,7 @@ class IngredientList():
             raise Exception("Invalid bounds!")
         index = self.getIngredientIndexbyName(name)
         if index == -1:
-            raise Exception("Ingredient trying to be updated does not exist!")
+            self.ingredients.append(Ingredient(name, True, [None, newLower, newUpper]))
         else:
             self.getIngredientbyIndex(index).updateQuantityRange(newLower, newUpper)
     
@@ -75,6 +83,26 @@ class IngredientList():
             raise Exception("Ingredient trying to be updated does not exist!")
         else:
             self.ingredients.pop(index)
+
+    def to_JSON(self) -> object:
+        ing_obj_list = []
+        for ing in self.ingredients:
+            if ing.isRanged(): 
+                ing_obj_list.append({
+                    "name": ing.getIngredientName(),
+                    "exact": "Ranged",
+                    "quantities": str(ing.getRelevantQuantities()[0]) + ", " + str(ing.getRelevantQuantities()[1])
+                })
+            else:
+                ing_obj_list.append({
+                    "name": ing.getIngredientName(),
+                    "exact": "Exact",
+                    "quantities": str(ing.getRelevantQuantities()[0])
+                })
+        return {
+            "ingredients": ing_obj_list
+        }
+
         
     def __str__(self):
         '''creates print string for the Ingredient List''' 

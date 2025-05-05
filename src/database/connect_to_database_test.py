@@ -1,4 +1,4 @@
-from mongo_client import DBClient
+from database import DBClient
 
 def main():
     """Ensures you can use your creds and connect to the DB"""

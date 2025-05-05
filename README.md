@@ -14,7 +14,7 @@
     - I use Miniconda3 as a way to install conda, which is used for package/environ management (https://www.anaconda.com/docs/getting-started/miniconda/install). 
     - Once this is installed, at least for Ubuntu with a Bash/Zsh shell, I edit the startup configuration file for the shell with the line "conda deactivate" after the conda initialize code block.
     - Store your Mongo creds in a safe enough place given the project size/scope.
-4. Activate the virtual environment and do "pip install -r /path/to/requirements.txt" to set up the dependencies.
+4. Activate the virtual environment and do "pip install -r requirements.txt" to set up the dependencies.
 5. (Optional, for development) Add extension Todo Tree in VSCode to easily navigate what needs to be done in the code itself.
     - In VSCode user settings JSON file, edit it like so: 
         ``` 
@@ -35,3 +35,14 @@
          ```
     - This way, when you place comments with with TODO in them, it will highlight the entire comment line with a soft pale yellow to make it easy for others to see without being too annoying. Or customize it yourself: https://marketplace.visualstudio.com/items?itemName=Gruntfuggly.todo-tree
     - Then you can click the tree icon on the side bar to see exactly where TODOs were maded in different folders and whatnot.
+
+# How To Run Database and Index Creation
+- Set up account with MongoDB Atlas and store necessary connection string credentials in safe place to retrieve for project's scope, like env variables
+- Add your/path/to/beans-and-a-dream/src to the Python sys path for importing the folders as modules, as they are under development 
+- Run src/preprocessing/row_to_document_structure_1.py to load the 500k+ recipes using with your own database_name, collection_name in main func and increase batch size as much as it can without slowing (say, 10k per batch)
+- Once recipes are loaded, use regular_index.py or search_index.py to set up an index using with your own database_name, collection_name based on what querying type you prefer
+
+# How To Run Experiments
+- For experiments, utilize database/database_test_utils or database/test_utils_atlas to create randomly specified reg queries or search queries for experiments
+- Run database/benchmark_reg_index.py, database/benchmark_search_index.py, database/cache_test.py after passing in the test query csvs you have created
+- Pass the resulting csvs into database/plot_benchmarks.py and comment out the log scale if you prefer reg scale

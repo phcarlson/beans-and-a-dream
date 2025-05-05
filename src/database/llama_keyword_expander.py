@@ -52,7 +52,6 @@ class KeywordExpander():
 async def main():
     expander = KeywordExpander()
 
-    # expanded = await expander.expand_ingredients(["bell pepper"])
     expanded = await expander.expand_ingredients(["bell pepper", "yukon gold potato"])
 
     print(expanded)

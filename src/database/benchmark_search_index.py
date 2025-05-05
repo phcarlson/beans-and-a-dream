@@ -28,9 +28,6 @@ async def keep_querying(collection, counter_lock, counter, latencies, query_queu
         # To actually activate the query because it is done lazily, iterate over results
         results = await collection.aggregate(query)
         list_of_results = await results.to_list()
-        # count = 0
-        # async for _ in cursor:
-        #     count += 1  # Count the documents
         latency = time.monotonic() - started_at
 
         query_queue.task_done()
@@ -78,7 +75,7 @@ async def benchmark_curr_db_indexes(db, collection, test_queries, max_workers=20
         for task in tasks:
             task.cancel()
 
-        # Wait until all worker tasks are cancelled.
+        # Wait until all worker tasks are cancelled
         await asyncio.gather(*tasks, return_exceptions=True)
 
         # Gather and print analytics
@@ -116,15 +113,8 @@ async def run_search_index_benchmark(test_query_file_name, index_file_name):
     db = await client.get_database(database_name)
     collection = db[collection_name]
 
-    # Load up the test queries
-
-    
     # First make a query to form connection if not already formed 
     await collection.find_one()
-    
-    # Path to all of our test reg indexes
-  
-    path_to_search_indexes = "src/database/search_indexes_to_try"
 
     # Iterate over each possible one in the folder to set up and run the benchmark
     qps_results = []
@@ -135,10 +125,8 @@ async def run_search_index_benchmark(test_query_file_name, index_file_name):
                                     index_name=index_name,
                                     search_index_model_instance=None,
                                     search_index_model_file_name=index_file_name)
-    csv_file_name=f'{index_name}.csv'
-    search_objs = await atlas_search_creator(client=client, db=db, r_sample='simple_leq_criteria.csv', search_index=index_name, save_searches_to_csv=True, csv_file_name=csv_file_name)
 
-    test_queries_df = pd.read_csv(csv_file_name)
+    test_queries_df = pd.read_csv(test_query_file_name)
     test_queries_df["Search"] = test_queries_df["Search"].apply(literal_eval)
     test_queries = test_queries_df["Search"].tolist()
     if succeeded:
@@ -151,33 +139,23 @@ async def run_search_index_benchmark(test_query_file_name, index_file_name):
             qps_result["IndexSetupFileName"] = index_name
             qps_results.append(qps_result)
 
-    # Save results to CSV
-    await save_results(qps_results, index_file_name, client)
-        # df = pd.DataFrame(qps_results)
-        # benchmark_file_name = f"search_benchmark_result_{index_file_name}_{datetime.now()}.csv"
-        # df.to_csv(benchmark_file_name, index=False)
-        # print(f"\nSaved results to '{benchmark_file_name}'")
-        # # await client.close_connection()
-        # await client.close_connection()
+            df = pd.DataFrame(qps_results)
+            benchmark_file_name = f"partial_random_search_benchmark_results_{datetime.now()}.csv"
+            df.to_csv(benchmark_file_name, index=False)
 
-async def save_results(qps_results, index_file_name, client):
-    try:
+    # Save results to CSV
         benchmark_file_name = f"search_benchmark_result_{index_file_name}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
         df = pd.DataFrame(qps_results)
         df.to_csv(benchmark_file_name, index=False)
         print(f"\nSaved results to '{benchmark_file_name}'")
-     
-    except Exception as e:
-        print(f"Error saving to CSV: {e}")
-    finally:
         await client.close_connection()
-
 
 async def main():
     # test_query_file_name = "final_complex_reg_queries.csv"
-    test_query_file_name = "simple_leq_searches.csv"
+    test_query_file_name = "random_dynamic.csv"
 
-    await run_search_index_benchmark(test_query_file_name, 'static_on_ingredient_pairs.json')
+    # File to benchmark adjusted manually due to the delay in constructing a large search index
+    await run_search_index_benchmark(test_query_file_name, 'dynamic.json')
 
 if __name__ == "__main__":
     asyncio.run(main())

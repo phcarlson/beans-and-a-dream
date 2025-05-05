@@ -1,1 +1,0 @@
-# To compare indexing the data in different ways for both reg and search engine

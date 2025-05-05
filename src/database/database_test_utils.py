@@ -7,7 +7,9 @@ from ast import literal_eval
 
 from database.mongo_client import DBClient
 from datetime import datetime
- 
+
+from matplotlib import pyplot as plt
+
 def run_test_queries(queries, collection):
     for i, query in enumerate(queries):
         results = list(collection.find(query))
@@ -59,36 +61,49 @@ async def get_n_random_ingredients(collection, n):
     return sampled_ingredients
 
 
-async def generate_n_random_simple_criteria(collection, n=10000, save_criteria = True, file_name = None):
+def plot_freq_distro(freqs):
+    """ Freq distro plottd to determine threshold for what is considered 'common', seen by long tail """
+    ingredients, counts = zip(*freqs)
+    plt.figure(figsize=(10, 6))
+    plt.bar(ingredients, counts, color='skyblue')
+    plt.xlabel('Ingredient')
+    plt.ylabel('Frequency')
+    plt.title('Ingredient Frequency Distribution')
+
+    # Rotate the x-axis labels for readability
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.show()
+
+async def generate_n_random_simple_criteria(collection, n=10000, fraction_common = 0.7, save_criteria = True, file_name = None):
     """ Our definition of 'simple' criteria are:
-      a single ingredient and exact quantity, 
-      a single ingredient and quantity range
-      1-3 ingredients with quantity ranges?
+      1-3 ingredients with geq 0 and leq quantity between 0.10 and 10.00, assuming mostly American units/counts of vegs 
 
       This generates the list of criteria to write to a csv file rather than the queries themselves. 
       That way, if we change the way we construct a query, the generated criteria can simply be reused.
     """
 
-    # Get the list of most to least freq ingredients
-    freqs_with_na = await get_ingredient_frequencies(collection)
-    freqs = [item for item in freqs_with_na if item[0] != 'N/A']
+    # # Get the list of most to least freq ingredients
+    # freqs_with_na = await get_ingredient_frequencies(collection)
+    # freqs = [item for item in freqs_with_na if item[0] != 'N/A']
 
-    # Based on a threshold, determine what is considered common or not
-    common_ingredients, rare_ingredients = split_common_rare(freqs, common_threshold=0.1)
+    # # Based on a threshold, determine what is considered common or not
+    # common_ingredients, rare_ingredients = split_common_rare(freqs, common_threshold=0.1)
+    all_ingredients = await get_distinct_ingredients(collection)
 
     criteria_rows = []
-
     for i in range(n):
         # Pick up to 3 ingredients to search/query at random
         num_ingredients = np.random.randint(1, 4)
-        ingredients = sample_ingredients(common_ingredients, rare_ingredients, num_ingredients, common_fraction=0.3)
+        ingredients = np.random.choice(all_ingredients, size=num_ingredients, replace=False)
+        # ingredients = sample_ingredients(common_ingredients, rare_ingredients, num_ingredients, common_fraction=fraction_common)
         quantities = np.random.uniform(low=0.10, high=10.00, size=num_ingredients)
         # is_exact = random.choice([True, False])
         is_exact = False
         criteria_rows.append({
             'Type': 'simple',
             'Exact': is_exact,
-            'Ingredients': ingredients,
+            'Ingredients': ingredients.tolist(),
             'Quantities': np.round(quantities, 2).tolist()
         })
     
@@ -101,60 +116,6 @@ async def generate_n_random_simple_criteria(collection, n=10000, save_criteria =
     
     #can use as a source for query construction
     return criteria_df
-
-
-async def generate_n_random_complex_criteria(collection, n, save_criteria = True):
-    """ Our definition of 'complex' criteria are:
-    over 3 ingredients with quantity ranges
-
-    This generates the list of criteria to write to a csv file rather than the queries themselves. 
-    That way, if we change the way we construct a query, the generated criteria can simply be reused.
-    """
-
-    # Get the list of most to least freq ingredients
-    freqs = await get_ingredient_frequencies(collection)
-
-    # Based on a threshold, determine what is considered common or not
-    common_ingredients, rare_ingredients = split_common_rare(freqs, common_threshold=0.1)
-    
-    criteria_rows = []
-    for i in range(n):
-        # Pick between 4 and say, 10 ingredients
-        num_ingredients = np.random.randint(4, 11)
-        
-        # Determine what percentage of the ingredients sampled we want to be common or rare, to prevent artificially short running queries
-        ingredients = sample_ingredients(common_ingredients, rare_ingredients, num_ingredients, common_fraction=0.3)
-               
-        # is_exact = random.choice([True, False])
-        is_exact = False
-
-        # if is_exact:
-        #     # Weights toward smaller quantities (assuming querying with mostly American metrics)
-        #     # quantities = 0.10 + (10.00 - 0.10) * np.random.beta(2, 5, size=num_ingredients)
-        #     np.random.uniform(low=0.10, high=10.00, size=num_ingredients)
-        
-        # # In terms of complex queries, what this means is that it has an upper AND lower bound specified (that isn't just 0)
-        # else:
-        quantities = np.random.uniform(low=0.10, high=10.00, size=(num_ingredients * 2))
-    
-        criteria_rows.append({
-            'Type': 'complex',
-            'Exact': is_exact,
-            'Ingredients': ingredients,
-            'Quantities': np.round(quantities, 2).tolist()
-        })
-    
-    criteria_df = pd.DataFrame(criteria_rows)
-
-    if (save_criteria):
-        #grab current datetime and transform for legal file name
-        now = datetime.now()
-        datetime_file = now.strftime("%Y%m%d-%H%M%S")
-        criteria_df.to_csv(f'complex_test_criteria_{datetime_file}.csv', index=False) #{datetime.now()}
-    
-    #can use as a source for query construction
-    return criteria_df
-
 
 def try_literal_eval(csv_string):
     '''library function that parses basic python literals'''
@@ -252,89 +213,6 @@ async def query_creator(collection, r_sample, save_file_name = None, make_and = 
     #returns dataframe if you want to query right away or randomly. Need to use index
     return recipeQueries_df
 
-
-# async def query_creator(collection, r_sample) -> pd.DataFrame: #creates "or" filter per row of criteria
-
-#     '''function that takes either simple or complex generated criteria and translate them into mongoDB filter syntax
-#         r_sample should be either pd.dataframe that is created from generators or filepath to generator created CSV
-#         currently queries each criteria and outputs a pandas.DF of queries. also saves dataframe as CSV'''
-#     df = typefy(r_sample)
-
-#     recipeQueries = []
-
-#     #read in each row one at a time
-#     for index, row in df.iterrows():
-#         ingredient_list = row["Ingredients"]
-#         quantity_list = row["Quantities"]
-#         exact = row["Exact"]
-#         qType = row["Type"]
-#         qntSliceStart = 0
-
-#         #collect queries for ing/qnt combos for this row
-#         recipe = []
-
-#         if exact:
-#             for ing, qnt in zip(ingredient_list, quantity_list):
-#                 #NOTE: qnt should be numeric since Quantities field is a number in mongo
-#                 #all values cast back to native python so csv queries dont have "np.str_" and "np.float64"
-#                 query = {
-#                     "Ingredients.IngredientName": str(ing),
-#                     "Ingredients.Quantity" : float(qnt)
-#                 }
-#                 recipe.append(query)
-
-#         else:
-#             if qType == "complex":
-#                 for ing in ingredient_list:
-#                     #for each ingredient, pull 2 values from the Quantity list
-#                     qntMinMax = quantity_list[qntSliceStart:qntSliceStart + 2]
-
-#                     #get min and max of the two values
-#                     qntMin = min(qntMinMax)
-#                     qntMax = max(qntMinMax)
-
-#                     query = {
-#                         "Ingredients.IngredientName": str(ing),
-#                         "Ingredients.Quantity" : {
-#                         "$gte": float(qntMin),
-#                         "$lte": float(qntMax)
-#                         }
-#                     }
-#                     recipe.append(query)
-                    
-#                     #increase index. next ingredient will get next 2 quantity values
-#                     qntSliceStart +=2
-#             else:
-#                 for ing, qnt in zip(ingredient_list, quantity_list):
-#                     query = {
-#                         "Ingredients.IngredientName": str(ing),
-#                         "Ingredients.Quantity" : {"$lte" : float(qnt)}
-#                     }
-#                     recipe.append(query)
-                
-#         #gather list of queries and slap an or on it
-#         db_query = {"$or" : recipe}
-
-#         #query the database whynot. see the fruits of your labor
-#         # print(f'Query {index+1} : {db_query}', f'{await collection.count_documents(db_query)} results found.\n', sep= '\n')
-
-#         #add all row queries together with associated type and exact reference 
-#         recipeQueries.append({
-#             "Type" : qType,
-#             "Exact" : exact,
-#             "Query" : db_query
-#             })
-    
-#     #convert and save
-#     recipeQueries_df = pd.DataFrame(recipeQueries)
-#     now = datetime.now()
-#     datetime_file = now.strftime("%Y%m%d_%H%M%S")
-#     recipeQueries_df.to_csv(f'{qType}_test_queries_{datetime_file}.csv', index=False) #{datetime.now()}
-    
-#     #returns dataframe if you want to query right away or randomly. Need to use index
-#     return recipeQueries_df
-
-
 async def csv_query_reader_and_query(collection, csv_string):
     '''func to read in previosly created queries and query database'''
     try:
@@ -404,7 +282,7 @@ def split_common_rare(ingredient_counts, common_threshold=0.1):
     return common_ingredients, rare_ingredients
 
 
-def sample_ingredients(common_ingredients, rare_ingredients, n, common_fraction=0.6):
+def sample_ingredients(common_ingredients, rare_ingredients, n, common_fraction):
     if n != 0:
         # Based on the frac of common to sample, it's either a number > 1 or, if the percent leads to 0, just sample 1 common at least. 
         n_common = max(1, int(n * common_fraction))
@@ -426,12 +304,12 @@ async def main():
     db = await client.get_database(database_name)
     collection = db[collection_name]
     
-    # smpl_crt = await generate_n_random_simple_criteria(collection, n=10000)
+    # smpl_crt = await generate_n_random_simple_criteria(collection = collection, n=2560*100, fraction_common=0.7, save_criteria=True, file_name='src/database/official_testing_criteria/simple_leq_geq_for_scalability_test.csv')
     # cmpx_crt = await generate_n_random_complex_criteria(collection, n=10000)
         #queryCreator returns a list of queries (1 per n). will need to query datafram index or come up with another way
     #query inside query functions? could pass collection in and just run through queries as they are generated
-    filterQueries = await query_creator(collection = collection, r_sample='src/database/official_testing_criteria/simple_leq_criteria.csv', 
-                                        save_file_name='simple_leq_geq_criteria.csv', make_and = False
+    filterQueries = await query_creator(collection = collection, r_sample='src/database/official_testing_criteria/simple_leq_geq_for_scalability_test.csv', 
+                                        save_file_name='src/database/official_testing_criteria/simple_leq_geq_for_scalability_test.csv', make_and = False
     )
     #print(collection.count_documents(filterQueries.iloc[0, 2]))
 

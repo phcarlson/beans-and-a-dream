@@ -26,7 +26,7 @@ async def keep_querying(collection, counter_lock, counter, latencies, query_queu
         cursor = collection.find(query).limit(10)
         count = 0
         async for _ in cursor:
-            count += 1  # Count the documents
+            count += 1
         latency = time.monotonic() - started_at
 
         query_queue.task_done()
@@ -147,7 +147,7 @@ async def run_reg_index_benchmarks(test_query_file_name):
                     qps_result["IndexSetupFileName"] = index_name
                     qps_results.append(qps_result)
                     df = pd.DataFrame(qps_results)
-                    benchmark_file_name = f"partial_medium_reg_benchmark_results_{datetime.now()}.csv"
+                    benchmark_file_name = f"partial_reg_benchmark_results_{datetime.now()}.csv"
                     df.to_csv(benchmark_file_name, index=False)
 
     df = pd.DataFrame(qps_results)
@@ -157,8 +157,7 @@ async def run_reg_index_benchmarks(test_query_file_name):
     await client.close_connection()
 
 async def main():
-    test_query_file_name = "src/database/official_testing_criteria/simple_leq_queries.csv"
-
+    test_query_file_name = "src/database/official_testing_criteria/simple_leq_geq_0.7_common_queries.csv"
     await run_reg_index_benchmarks(test_query_file_name)
 
 if __name__ == "__main__":

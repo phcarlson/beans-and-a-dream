@@ -81,7 +81,7 @@
 # How To Run Database and Index Creation
 
 1. Set up a MongoDB Atlas account and cluster.
-2. Use the provided test user credentials** or your own:
+2. Use the provided test user credentials or your own:
     ```bash
     export MONGO_RECIPE_USER=guest_user
     export MONGO_RECIPE_PW=secretpassw0rd

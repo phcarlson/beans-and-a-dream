@@ -1,48 +1,141 @@
 # Beans and a Dream
+ *A scalable, quantity-aware recipe search system leveraging PySpark and MongoDB Atlas Search.*
+
+# Project Overview
 - Staring into your pantry, all you've got is one can of beans, a half cup of rice, and a dream. What can you make? 
 - Beans and a Dream aims to be a scalable, ingredient quantity-based recipe search system built with MongoDB Atlas Search and PySpark. Indexes 500k+ recipe documents to search against the exact ingredient amounts you have. A WIP, pending system analyses/benchmarking.
 
 # Data Source
-- The dataset we used is found here on Kaggle: https://www.kaggle.com/datasets/irkaal/foodcom-recipes-and-reviews/data
-- It is under License CC0: Public Domain, so we are free to use it in any way.
+- Dataset: [Food.com Recipes and Reviews on Kaggle](https://www.kaggle.com/datasets/irkaal/foodcom-recipes-and-reviews/data)  
+- Format: Use the `.parquet` file (not CSV) to preserve metadata and ensure clean PySpark loading.
+- License: CC0 (Public Domain)
 
+# Project Structure
+
+    beans-and-a-dream/
+    │
+    ├── data/
+    │ └── raw/ # Place recipes.parquet here
+    │
+    ├── src/
+    │ ├── preprocessing/ # PySpark-based document construction
+    │ │ ├── row_to_document_structure_1.py
+    │ │ └── recipe_cleaning_utils.py
+    │ │
+    │ ├── database/ # MongoDB index creation, benchmarking, querying
+    │ │ ├── regular_index.py
+    │ │ ├── search_index.py
+    │ │ ├── benchmark_reg_index.py
+    │ │ ├── benchmark_search_index.py
+    │ │ ├── cache_test.py
+    │ │ ├── plot_benchmarks.py
+    │ │ ├── database_test_utils.py
+    │ │ └── test_utils_atlas.py
+    │ │
+    │ ├── app/ # Lightweight frontend (FastAPI)
+    │ │ ├── templates/
+    │ │ ├── static/
+    │ │ ├── main.py
+    │ │ └── ...
+    │ │
+    │ └── utils/ # Shared helpers (optional / in-dev)
+    │
+    ├── requirements.txt
+    └── README.md
+
+    
 # Setting Up Your Environment
 
-1. Clone the repo.
-2. Download the recipes.parquet from the Kaggle link above and add it to the data/raw directory. DO NOT DOWNLOAD THE CSV! The parquet preserves metadata about the different types and makes it easier to cleanly load into a PySpark dataframe. 
-3. Create a virtual environment for Python ____. 
-    - I use Miniconda3 as a way to install conda, which is used for package/environ management (https://www.anaconda.com/docs/getting-started/miniconda/install). 
-    - Once this is installed, at least for Ubuntu with a Bash/Zsh shell, I edit the startup configuration file for the shell with the line "conda deactivate" after the conda initialize code block.
-    - Store your Mongo creds in a safe enough place given the project size/scope.
-4. Activate the virtual environment and do "pip install -r requirements.txt" to set up the dependencies.
-5. (Optional, for development) Add extension Todo Tree in VSCode to easily navigate what needs to be done in the code itself.
-    - In VSCode user settings JSON file, edit it like so: 
-        ``` 
-        {
-            "workbench.colorTheme": "Default Dark Modern",
-            "explorer.confirmDragAndDrop": false,
-            "notebook.lineNumbers": "on",
-            "todo-tree.highlights.customHighlight": {
-                "TODO": {
-                    "type": "line",
-                    "iconColour": "#f1d257",
-                    "foreground": "black",
-                    "gutterIcon": true,
-                    "background": "#f1d257",
-                }
-            }
-        } 
-         ```
-    - This way, when you place comments with with TODO in them, it will highlight the entire comment line with a soft pale yellow to make it easy for others to see without being too annoying. Or customize it yourself: https://marketplace.visualstudio.com/items?itemName=Gruntfuggly.todo-tree
+1. Clone the repository.
+2. Download `recipes.parquet` from Kaggle and place it in `data/raw/`.  
+   ⚠️ **Do not use the CSV version** — the Parquet format preserves column types and metadata.
+3. Create a Python virtual environment (e.g., using conda or venv):
+    ```bash
+    conda create -n beans python=3.9
+    conda activate beans
+    ```
+4. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+5. (Optional) If using VSCode, install the **Todo Tree** extension to highlight development tasks. You can add this to your `settings.json`:
+    ```json
+    {
+      "workbench.colorTheme": "Default Dark Modern",
+      "explorer.confirmDragAndDrop": false,
+      "notebook.lineNumbers": "on",
+      "todo-tree.highlights.customHighlight": {
+        "TODO": {
+          "type": "line",
+          "iconColour": "#f1d257",
+          "foreground": "black",
+          "gutterIcon": true,
+          "background": "#f1d257"
+        }
+      }
+    }
+    ```
+    - This way, when you place comments with TODO in them, it will highlight the entire comment line with a soft pale yellow to make it easy for others to see without being too annoying. Or customize it yourself: https://marketplace.visualstudio.com/items?itemName=Gruntfuggly.todo-tree
     - Then you can click the tree icon on the side bar to see exactly where TODOs were maded in different folders and whatnot.
 
 # How To Run Database and Index Creation
-- Set up account with MongoDB Atlas and store necessary connection string credentials in safe place to retrieve for project's scope, like env variables
-- Add your/path/to/beans-and-a-dream/src to the Python sys path for importing the folders as modules, as they are under development 
-- Run src/preprocessing/row_to_document_structure_1.py to load the 500k+ recipes using with your own database_name, collection_name in main func and increase batch size as much as it can without slowing (say, 10k per batch)
-- Once recipes are loaded, use regular_index.py or search_index.py to set up an index using with your own database_name, collection_name based on what querying type you prefer
+
+1. Set up a MongoDB Atlas account and cluster.
+2. Use the provided test user credentials** or your own:
+    ```bash
+    export MONGO_RECIPE_USER=guest_user
+    export MONGO_RECIPE_PW=secretpassw0rd
+    ```
+3. Add the project to your Python path:
+    ```bash
+    export PYTHONPATH=$PYTHONPATH:/path/to/beans-and-a-dream/src
+    ```
+4. Load recipes into MongoDB:
+    ```bash
+    python src/preprocessing/row_to_document_structure_1.py
+    ```
+    - Modify `database_name`, `collection_name`, and `batch_size` (recommended: 10,000) inside the script.
+
+5. Create an index:
+    - For basic querying:
+        ```bash
+        python src/database/regular_index.py
+        ```
+    - For Atlas Search (recommended):
+        ```bash
+        python src/database/search_index.py
+        ```
+
+# How to Run the Frontend
+- To run the web interface:
+    ```bash
+    cd src/app
+    python -m main
+    ```
+- Then open your browser and go to: http://localhost:8000/adjustIngredients
+- This lets you input ingredients and quantities, and returns matching recipes from your MongoDB collection.
 
 # How To Run Experiments
-- For experiments, utilize database/database_test_utils or database/test_utils_atlas to create randomly specified reg queries or search queries for experiments
-- Run database/benchmark_reg_index.py, database/benchmark_search_index.py, database/cache_test.py after passing in the test query csvs you have created
-- Pass the resulting csvs into database/plot_benchmarks.py and comment out the log scale if you prefer reg scale
+1. **Generate query CSVs**  
+Use helper functions to generate random test queries:
+- For regular index:
+     ```python
+     from database.database_test_utils import generate_random_queries
+     ```
+- For Atlas Search:
+     ```python
+     from database.test_utils_atlas import generate_random_search_queries
+     ```
+
+2. **Run benchmark scripts**  
+   These scripts benchmark query response times across different configurations:
+   ```bash
+   python src/database/benchmark_reg_index.py
+   python src/database/benchmark_search_index.py
+   ```
+
+# Caching Tests
+- To test repeated query performance:
+    ```bash
+    python src/database/cache_test.py
+    ```
